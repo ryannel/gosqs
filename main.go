@@ -20,7 +20,7 @@ type Sqs interface {
 	SendMessage(message string, queue string) error
 	PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error
 	PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error
-	CreateQueue(queue string, delay int, retentionPeriod int) (string, error)
+	CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error)
 	DeleteQueue(queue string) error
 	ListQueues() ([]string, error)
 }

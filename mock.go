@@ -44,7 +44,7 @@ func (sqs *Mock) PollQueueWithRetry(queue string, callback func(string) bool, po
 	return nil
 }
 
-func (sqs *Mock) CreateQueue(queue string, delay int, retentionPeriod int) (string, error) {
+func (sqs *Mock) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error) {
 	queueUrl := "http://localhost/queues/" + queue
 
 	if len(sqs.queues) == 0 {
