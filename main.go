@@ -21,6 +21,7 @@ type Sqs interface {
 	PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error
 	PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error
 	CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error)
+	CreateDefaultQueue(queue string) (string, error)
 	DeleteQueue(queue string) error
 	ListQueues() ([]string, error)
 }
@@ -117,13 +118,6 @@ func (mq *Service) PollQueueWithRetry(queue string, callback func(string) bool, 
 // VisibilityTimeout - time the message will be hidden from other consumers after it is retried from the queue. If this time
 //                     expires it will be assumed that the message was not processed successfully and will be available to other consumers for retry.
 func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error) {
-	if retentionPeriod == 0 {
-		retentionPeriod = 345600 // 4 days
-	}
-	
-	if visibilityTimeout == 0 {
-		visibilityTimeout = 30 // 30 seconds
-	}
 
 	result, err := mq.service.CreateQueue(&sqs.CreateQueueInput{
 		QueueName: aws.String(queue),
@@ -137,6 +131,10 @@ func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTime
 	}
 
 	return *result.QueueUrl, nil
+}
+
+func (mq *Service) CreateDefaultQueue(queue string) (string, error) {
+	return mq.CreateQueue(queue, 345600, 30)
 }
 
 func (mq *Service) DeleteQueue(queue string) error {

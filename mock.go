@@ -66,6 +66,10 @@ func (sqs *Mock) CreateQueue(queue string, retentionPeriod int, visibilityTimeou
 	return queueUrl, nil
 }
 
+func (sqs *Mock) CreateDefaultQueue(queue string) (string, error) {
+	return sqs.CreateQueue(queue, 0, 0)
+}
+
 func (sqs *Mock) DeleteQueue(queue string) error {
 	_, exists := sqs.queues[queue]
 	if exists {
