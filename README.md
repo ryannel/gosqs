@@ -16,7 +16,7 @@ if err != nil {
 
 If you would like to attempt to connect to this endpoint and pause execution until it becomes available you can append `.Wait` this will re-try the connection for the selected number of times and jitter the back off time.
 ```
-endPoint, err := gosqs.SetEndPoint("Endpoint", "Region").Wait(20, 3, 8).
+endPoint, err := gosqs.SetEndPoint("Endpoint", "Region").
     Wait(20, 3, 8) //num retries 20, min backoff 3, max backoff 8
 ```
 
