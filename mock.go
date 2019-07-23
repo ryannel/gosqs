@@ -28,7 +28,7 @@ func (sqs *Mock) SendMessage(message string, queue string) error {
 	return nil
 }
 
-func (sqs *Mock) PollQueue(queue string, callback func(string) bool, pollWaitTime int) error {
+func (sqs *Mock) PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error {
 	messages := sqs.queues[queue].Messages
 	for _, message := range messages {
 		_ = callback(message)
@@ -36,7 +36,7 @@ func (sqs *Mock) PollQueue(queue string, callback func(string) bool, pollWaitTim
 	return nil
 }
 
-func (sqs *Mock) PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, numRetries int, minBackOff int, maxBackOff int) error {
+func (sqs *Mock) PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error {
 	messages := sqs.queues[queue].Messages
 	for _, message := range messages {
 		_ = callback(message)

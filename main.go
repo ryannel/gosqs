@@ -18,12 +18,14 @@ type Sqs interface {
 	Ping() error
 	Wait(numRetries int, minBackOff int, maxBackOff int) (Sqs, error)
 	SendMessage(message string, queue string) error
-	PollQueue(queue string, callback func(string) bool, pollWaitTime int) error
-	PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, numRetries int, minBackOff int, maxBackOff int) error
+	PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error
+	PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error
 	CreateQueue(queue string, delay int, retentionPeriod int) (string, error)
 	DeleteQueue(queue string) error
 	ListQueues() ([]string, error)
 }
+
+var _ Sqs = &Service{}
 
 func SetEndPoint(endpoint string, region string) Sqs {
 	// Errors only possible when using custom CA bundles.
