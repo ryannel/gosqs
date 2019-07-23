@@ -1,6 +1,6 @@
 # GOSQS
 
-This is a thing wrapper library around the GO AWS SDK's SQS functions. This wrapper seeks to simplify the the usage and unit testing of SQS queues. 
+This is a thin wrapper library around the GO AWS SDK's SQS functions. This wrapper seeks to simplify the the usage and unit testing of SQS queues. 
 
 # Usage
 
