@@ -34,7 +34,7 @@ func SetEndPoint(endpoint string, region string) Sqs {
 		},
 	})
 
-	var sqsService Sqs = &Service {
+	var sqsService Sqs = &Service{
 		service: sqs.New(sess),
 	}
 
@@ -73,8 +73,7 @@ func (mq *Service) SendMessage(message string, queue string) error {
 	return mq.sendMessage(message, queueUrl)
 }
 
-func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitTime int) error {
-	maxNumberOfMessages := 1
+func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error {
 	queueUrl, err := mq.getQueueUrl(queue)
 	if err != nil {
 		return err
@@ -82,7 +81,7 @@ func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitT
 
 	go func() {
 		for {
-			messages, err := mq.receiveMessages(queueUrl, maxNumberOfMessages, pollWaitTime)
+			messages, err := mq.receiveMessages(queueUrl, pollWaitTime, maxNumberOfMessagesPerPoll)
 			if err != nil {
 				log.Println(err)
 			}
@@ -103,21 +102,32 @@ func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitT
 	return nil
 }
 
-func (mq *Service) PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, numRetries int, minBackOff int, maxBackOff int) error {
+func (mq *Service) PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error {
 	err := mq.waitForQueue(queue, numRetries, minBackOff, maxBackOff)
 	if err != nil {
 		return err
 	}
 
-	return mq.PollQueue(queue, callback, pollWaitTime)
+	return mq.PollQueue(queue, callback, pollWaitTime, maxNumberOfMessagesPerPoll)
 }
 
-func (mq *Service) CreateQueue(queue string, delay int, retentionPeriod int) (string, error) {
+// Retention period  - time the messages will remain in the queue if not deleted
+// VisibilityTimeout - time the message will be hidden from other consumers after it is retried from the queue. If this time
+//                     expires it will be assumed that the message was not processed successfully and will be available to other consumers for retry.
+func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error) {
+	if retentionPeriod == 0 {
+		retentionPeriod = 345600 // 4 days
+	}
+	
+	if visibilityTimeout == 0 {
+		visibilityTimeout = 30 // 30 seconds
+	}
+
 	result, err := mq.service.CreateQueue(&sqs.CreateQueueInput{
 		QueueName: aws.String(queue),
 		Attributes: map[string]*string{
-			"DelaySeconds":           aws.String(strconv.Itoa(delay)),
 			"MessageRetentionPeriod": aws.String(strconv.Itoa(retentionPeriod)),
+			"VisibilityTimeout" : aws.String(strconv.Itoa(visibilityTimeout)),
 		},
 	})
 	if err != nil {
@@ -181,7 +191,7 @@ func (mq *Service) sendMessage(message string, queueUrl string) error {
 	return nil
 }
 
-func (mq *Service) receiveMessages(queueUrl string, maxNumberOfMessages int, waitTime int) ([]*sqs.Message, error) {
+func (mq *Service) receiveMessages(queueUrl string, timeBetweenPolls int, maxNumberOfMessagesPerPoll int) ([]*sqs.Message, error) {
 	result, err := mq.service.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
@@ -190,9 +200,8 @@ func (mq *Service) receiveMessages(queueUrl string, maxNumberOfMessages int, wai
 			aws.String(sqs.QueueAttributeNameCreatedTimestamp),
 		},
 		QueueUrl:            &queueUrl,
-		MaxNumberOfMessages: aws.Int64(5),
-		VisibilityTimeout:   aws.Int64(20),
-		WaitTimeSeconds:     aws.Int64(int64(waitTime)),
+		MaxNumberOfMessages: aws.Int64(int64(maxNumberOfMessagesPerPoll)),
+		WaitTimeSeconds:     aws.Int64(int64(timeBetweenPolls)),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to receive message from queue: "+queueUrl)
@@ -227,5 +236,3 @@ func (mq *Service) getQueueUrl(queue string) (string, error) {
 
 	return *resultURL.QueueUrl, nil
 }
-
-
