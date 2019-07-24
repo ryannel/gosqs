@@ -94,8 +94,7 @@ func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitT
 				if processedSuccessfully {
 					err = mq.deleteMessage(queueUrl, message.ReceiptHandle)
 					if err != nil {
-						log.Println("Error deleting message: " + *message.ReceiptHandle + "from queue: " + queue)
-						// Todo What to do if we fail to ack a message?
+						log.Println("Error deleting message: `" + *message.ReceiptHandle + "` from queue: `" + queue + "` Error: " + err.Error())
 					}
 				}
 			}
