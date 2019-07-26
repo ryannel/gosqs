@@ -77,6 +77,10 @@ func (mq *Service) SendMessage(message string, queue string) error {
 }
 
 func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error {
+	if maxNumberOfMessagesPerPoll > 10 || maxNumberOfMessagesPerPoll < 1 {
+		return errors.New("max number of messages per poll must be between 1 and 10")
+	}
+
 	queueUrl, err := mq.getQueueUrl(queue)
 	if err != nil {
 		return err
