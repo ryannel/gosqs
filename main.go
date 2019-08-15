@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -76,6 +77,14 @@ func (mq *Service) SendMessage(message string, queue string) error {
 	return mq.sendMessage(message, queueUrl)
 }
 
+// Polls the queue for new messages
+//
+// - queue: the name of the queue to poll
+// - callback: the function that will be called to process each message. If the
+//   function returns true the message will be deleted from the queue
+// - pollWaitTime: the amount of time in seconds sqs will wait for a message on a queue. As soon as a message is received
+// 	 the function will return (regardless of the wait time) and a new request started.
+// - maxNumberOfMessagesPerPoll: the max number of messages (between 1 and 10) that can be returned from a single poll.
 func (mq *Service) PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error {
 	if maxNumberOfMessagesPerPoll > 10 || maxNumberOfMessagesPerPoll < 1 {
 		return errors.New("max number of messages per poll must be between 1 and 10")
@@ -117,17 +126,33 @@ func (mq *Service) PollQueueWithRetry(queue string, callback func(string) bool, 
 	return mq.PollQueue(queue, callback, pollWaitTime, maxNumberOfMessagesPerPoll)
 }
 
-// Retention period  - time the messages will remain in the queue if not deleted
-// VisibilityTimeout - time the message will be hidden from other consumers after it is retried from the queue. If this time
-//                     expires it will be assumed that the message was not processed successfully and will be available to other consumers for retry.
-func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error) {
+// - Retention period:  time the messages will remain in the queue if not deleted
+// - VisibilityTimeout: time the message will be hidden from other consumers after it is retried from the queue. If this time
+//                      expires it will be assumed that the message was not processed successfully and will be available to other consumers for retry.
+// - Fifo: 				whether the queue should be first in first out with deliver once guarantee
+// - encrypted:			whether the queue should use server side encryption using the default kms
+func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int, fifo bool, encrypted bool) (string, error) {
+	attributes := make(map[string]*string)
+
+	attributes["MessageRetentionPeriod"] = aws.String(strconv.Itoa(retentionPeriod))
+	attributes["VisibilityTimeout"] = aws.String(strconv.Itoa(visibilityTimeout))
+
+	if encrypted {
+		attributes["KmsMasterKeyId"] = aws.String("alias/aws/sqs")
+		attributes["KmsDataKeyReusePeriodSeconds"] = aws.String("300")
+	}
+
+	if fifo {
+		if !strings.HasSuffix(queue, ".fifo") {
+			return "", errors.New("fifo queue names must end in `.fifo`")
+		}
+		attributes["FifoQueue"] = aws.String("true")
+		attributes["ContentBasedDeduplication"] = aws.String("true")
+	}
 
 	result, err := mq.service.CreateQueue(&sqs.CreateQueueInput{
-		QueueName: aws.String(queue),
-		Attributes: map[string]*string{
-			"MessageRetentionPeriod": aws.String(strconv.Itoa(retentionPeriod)),
-			"VisibilityTimeout" : aws.String(strconv.Itoa(visibilityTimeout)),
-		},
+		QueueName:  aws.String(queue),
+		Attributes: attributes,
 	})
 	if err != nil {
 		return "", err
@@ -137,7 +162,11 @@ func (mq *Service) CreateQueue(queue string, retentionPeriod int, visibilityTime
 }
 
 func (mq *Service) CreateDefaultQueue(queue string) (string, error) {
-	return mq.CreateQueue(queue, 345600, 30)
+	return mq.CreateQueue(queue, 345600, 30, false, true)
+}
+
+func (mq *Service) CreateDefaultFifoQueue(queue string) (string, error) {
+	return mq.CreateQueue(queue, 345600, 30, true, true)
 }
 
 func (mq *Service) DeleteQueue(queue string) error {
@@ -194,7 +223,7 @@ func (mq *Service) sendMessage(message string, queueUrl string) error {
 	return nil
 }
 
-func (mq *Service) receiveMessages(queueUrl string, timeBetweenPolls int, maxNumberOfMessagesPerPoll int) ([]*sqs.Message, error) {
+func (mq *Service) receiveMessages(queueUrl string, pollWaitTime int, maxNumberOfMessagesPerPoll int) ([]*sqs.Message, error) {
 	result, err := mq.service.ReceiveMessage(&sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
 			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
@@ -204,7 +233,7 @@ func (mq *Service) receiveMessages(queueUrl string, timeBetweenPolls int, maxNum
 		},
 		QueueUrl:            &queueUrl,
 		MaxNumberOfMessages: aws.Int64(int64(maxNumberOfMessagesPerPoll)),
-		WaitTimeSeconds:     aws.Int64(int64(timeBetweenPolls)),
+		WaitTimeSeconds:     aws.Int64(int64(pollWaitTime)),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to receive message from queue: "+queueUrl)
