@@ -44,7 +44,7 @@ func (sqs *Mock) PollQueueWithRetry(queue string, callback func(string) bool, po
 	return nil
 }
 
-func (sqs *Mock) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error) {
+func (sqs *Mock) CreateQueue(queue string, retentionPeriod int, visibilityTimeout int, fifo bool, encrypted bool) (string, error) {
 	queueUrl := "http://localhost/queues/" + queue
 
 	if len(sqs.queues) == 0 {
@@ -67,7 +67,11 @@ func (sqs *Mock) CreateQueue(queue string, retentionPeriod int, visibilityTimeou
 }
 
 func (sqs *Mock) CreateDefaultQueue(queue string) (string, error) {
-	return sqs.CreateQueue(queue, 0, 0)
+	return sqs.CreateQueue(queue, 0, 0, false, true)
+}
+
+func (sqs *Mock) CreateDefaultFifoQueue(queue string) (string, error) {
+	return sqs.CreateQueue(queue, 0, 0, true, true)
 }
 
 func (sqs *Mock) DeleteQueue(queue string) error {

@@ -21,8 +21,9 @@ type Sqs interface {
 	SendMessage(message string, queue string) error
 	PollQueue(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int) error
 	PollQueueWithRetry(queue string, callback func(string) bool, pollWaitTime int, maxNumberOfMessagesPerPoll int, numRetries int, minBackOff int, maxBackOff int) error
-	CreateQueue(queue string, retentionPeriod int, visibilityTimeout int) (string, error)
+	CreateQueue(queue string, retentionPeriod int, visibilityTimeout int, fifo bool, encrypted bool) (string, error)
 	CreateDefaultQueue(queue string) (string, error)
+	CreateDefaultFifoQueue(queue string) (string, error)
 	DeleteQueue(queue string) error
 	ListQueues() ([]string, error)
 }
