@@ -214,7 +214,7 @@ func (mq *Service) sendMessage(message string, queueUrl string) error {
 	var messageGroupId *string
 	messageDelay := aws.Int64(0)
 	if strings.HasSuffix(queueUrl, ".fifo") {
-		messageGroupId = aws.String("test")
+		messageGroupId = aws.String(queueUrl)
 		messageDelay = nil
 	}
 
