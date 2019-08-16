@@ -212,15 +212,17 @@ func (mq *Service) waitForQueue(queue string, numRetries int, minBackOff int, ma
 
 func (mq *Service) sendMessage(message string, queueUrl string) error {
 	var messageGroupId *string
+	messageDelay := aws.Int64(0)
 	if strings.HasSuffix(queueUrl, ".fifo") {
-		messageGroupId = &queueUrl
+		messageGroupId = aws.String("test")
+		messageDelay = nil
 	}
 
 	_, err := mq.service.SendMessage(&sqs.SendMessageInput{
 		MessageGroupId: messageGroupId,
-		DelaySeconds: aws.Int64(int64(0)),
-		MessageBody:  aws.String(message),
-		QueueUrl:     &queueUrl,
+		DelaySeconds:   messageDelay,
+		MessageBody:    aws.String(message),
+		QueueUrl:       &queueUrl,
 	})
 
 	if err != nil {
