@@ -31,6 +31,10 @@ type Sqs interface {
 var _ Sqs = &Service{}
 
 func SetEndPoint(endpoint string, region string) Sqs {
+	if region == "default" {
+		region = ""
+	}
+
 	// Errors only possible when using custom CA bundles.
 	sess, _ := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
