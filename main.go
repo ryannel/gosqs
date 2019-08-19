@@ -31,8 +31,8 @@ type Sqs interface {
 var _ Sqs = &Service{}
 
 func SetEndPoint(endpoint string, region string) Sqs {
-	if region == "default" {
-		region = ""
+	if endpoint == "default" {
+		endpoint = ""
 	}
 
 	// Errors only possible when using custom CA bundles.
